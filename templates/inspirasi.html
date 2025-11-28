@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1 class="page-title">Inspirasi Desain</h1>
+    <p class="page-subtitle">Temukan inspirasi dari berbagai sumber untuk proyek Anda berikutnya.</p>
+
+    <div class="filter-container">
+        <div class="search-box">
+            <i class="icon-search"></i> 
+            <input type="text" id="searchInput" name="q" placeholder="Cari berdasarkan judul (mis: 'dashboard')" value="{{ query }}">
+        </div>
+        <div class="sort-box">
+            <i class="icon-filter"></i> <select id="sortSelect">
+                <option value="">Semua Kategori</option>
+                <option value="latest">Terbaru</option>
+                <option value="popular">Populer</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="grid" id="designGrid">
+        {% for d in designs %}
+        <div class="card modern-card fade-in"
+            data-title="{{ d.title | lower }}"
+            data-category="{{ d.category | lower }}"
+            data-latest="{{ d.latest }}"
+            data-popular="{{ d.popular }}">
+
+            <img src="{{ d.img }}" alt="{{ d.title }}">
+
+            <div class="card-body">
+                <h3>{{ d.title }}</h3>
+
+                <p class="design-source">
+                    Sumber:
+                </p>
+                <a href="#" class="open-btn">Kunjungi Aplikasi →</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div id="noResultsMessage" class="no-results" style="display: none;">
+        <img src="/static/images/not-found.svg" alt="Tidak ditemukan"> <h3>Oops! Desain tidak ditemukan</h3>
+        <p>Coba gunakan kata kunci atau filter yang berbeda.</p>
+    </div>
+
+</div>
+
+<script>
+const input = document.getElementById('searchInput');
+const sortSelect = document.getElementById('sortSelect');
+const grid = document.getElementById('designGrid');
+const noResultsMessage = document.getElementById('noResultsMessage');
+
+// Render ulang kartu
+function renderCards(data) {
+    grid.innerHTML = "";
+
+    if (!data || data.length === 0) {
+        noResultsMessage.style.display = "block";
+        grid.style.display = "none";
+        return;
+    }
+
+    noResultsMessage.style.display = "none";
+    grid.style.display = "grid";
+
+    data.forEach(d => {
+        const card = document.createElement("div");
+        card.className = "card modern-card fade-in";
+        card.dataset.title = d.title.toLowerCase();
+        card.dataset.category = d.category?.toLowerCase() || "";
+        card.dataset.latest = d.latest || 0;
+        card.dataset.popular = d.popular || 0;
+
+        card.innerHTML = `
+            <img src="${d.img}" alt="${d.title}">
+            <div class="card-body">
+                <h3>${d.title}</h3>
+                <p class="design-source">Sumber: ${d.source}</p>
+                <a href="${d.url}" class="open-btn" target="_blank">Kunjungi Aplikasi →</a>
+            </div>
+        `;
+
+        grid.appendChild(card);
+    });
+}
+
+// Filter dan sorting setelah AJAX
+function filterAndSortLocal() {
+    const keyword = input.value.toLowerCase();
+    const sortValue = sortSelect.value;
+
+    let cards = Array.from(document.querySelectorAll('.modern-card'));
+
+    // filter berdasar keyword
+    let list = cards.filter(card =>
+        card.dataset.title.includes(keyword)
+    );
+
+    // sorting
+    if (sortValue === "latest") {
+        list.sort((a, b) => b.dataset.latest - a.dataset.latest);
+    }
+    if (sortValue === "popular") {
+        list.sort((a, b) => b.dataset.popular - a.dataset.popular);
+    }
+
+    grid.innerHTML = "";
+    list.forEach(c => grid.appendChild(c));
+}
+
+//SEARCH LIVE
+input.addEventListener("input", async () => {
+    let q = input.value.trim();
+
+    const res = await fetch(`/search?q=${q}`);
+    const data = await res.json();
+
+    // Render kartu baru
+    renderCards(data);
+
+    // Apply sorting jika user memilih kategori sorting
+    filterAndSortLocal();
+});
+
+
+// Sorting
+sortSelect.addEventListener("change", filterAndSortLocal);
+</script>
+
+
+{% endblock %}

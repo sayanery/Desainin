@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1 class="page-title">Chat Desainin</h1>
+<p class="page-subtitle">Tanyakan apa saja tentang ide desain, palet warna, atau minta dibuatkan gambar.</p>
+
+<div class="chat-wrapper">
+    <div id="messages" class="chat-box">
+        <div class="bubble bot">Halo! Mau bantu desain apa hari ini? Tulis "buatkan poster" untuk mencoba generator gambar.</div>
+    </div>
+
+    <form id="chatForm" class="chat-input-area">
+        <input type="text" id="userInput" placeholder="Tulis permintaan desain..." autocomplete="off">
+        <button type="submit" class="btn-send" id="sendButton">➤</button>
+    </form>
+</div>
+
+<script>
+const chatForm = document.getElementById('chatForm');
+const userInput = document.getElementById('userInput');
+const messagesBox = document.getElementById('messages');
+const sendButton = document.getElementById('sendButton');
+
+chatForm.addEventListener('submit', function(event) {
+    event.preventDefault();
+    sendMessage();
+});
+
+async function sendMessage() {
+    let msg = userInput.value.trim();
+    if (!msg) return;
+
+    appendMessage('user', msg);
+    userInput.value = "";
+    sendButton.disabled = true;
+
+    appendLoadingBubble();
+
+    try {
+        const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ message: msg })
+        });
+
+        const data = await res.json();
+        removeLoadingBubble();
+
+        if (data.reply) {
+            appendMessage('bot', data.reply);
+        }
+
+        if (data.image_url) {
+            appendImage(data.image_url);
+        }
+
+    } catch (error) {
+        console.error(error);
+        removeLoadingBubble();
+        appendMessage('bot', 'Oops! Server bermasalah.');
+    } finally {
+        sendButton.disabled = false;
+        userInput.focus();
+    }
+}
+
+function appendMessage(role, text) {
+    const bubble = document.createElement('div');
+    bubble.classList.add('bubble', role);
+
+    const safe = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    bubble.innerHTML = safe.replace(/\n/g, '<br>');
+
+    messagesBox.appendChild(bubble);
+    messagesBox.scrollTop = messagesBox.scrollHeight;
+}
+
+function appendLoadingBubble() {
+    const bubble = document.createElement('div');
+    bubble.classList.add('bubble', 'bot');
+    bubble.id = "loading-bubble";
+    bubble.textContent = "...";
+    messagesBox.appendChild(bubble);
+    messagesBox.scrollTop = messagesBox.scrollHeight;
+}
+
+function removeLoadingBubble() {
+    const el = document.getElementById("loading-bubble");
+    if (el) el.remove();
+}
+
+function appendImage(url) {
+    const bubble = document.createElement('div');
+    bubble.classList.add('bubble', 'bot', 'image-bubble');
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = "Generated";
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = "_blank";
+    link.innerText = "Lihat / Download";
+
+    bubble.appendChild(img);
+    bubble.appendChild(link);
+
+    messagesBox.appendChild(bubble);
+    messagesBox.scrollTop = messagesBox.scrollHeight;
+}
+</script>
+
+{% endblock %}
